@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>โปรแกรมประเมินผลผลิตปลานิลแดง (MNB + Airlift)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0277bd;
+            --secondary: #00bcd4;
+            --accent: #d81b60;
+            --bg-grad: linear-gradient(135deg, #1cb5e0 0%, #000851 100%);
+            --card-grad: linear-gradient(135deg, #e0f7fa 0%, #fff9c4 100%);
+            --text-main: #1a237e;
+        }
+        * { box-sizing: border-box; font-family: 'Prompt', sans-serif; }
+        body {
+            background: var(--bg-grad); color: var(--text-main); margin: 0; padding: 20px;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+        }
+        .container {
+            background: var(--card-grad); padding: 40px; border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4); max-width: 1100px; width: 100%;
+            border-top: 8px solid var(--primary); position: relative; overflow: hidden;
+        }
+        .top-credit {
+            text-align: center; font-size: 18px; font-weight: 600; color: var(--accent);
+            background: rgba(255, 255, 255, 0.7); padding: 15px; border-radius: 12px;
+            margin-bottom: 25px; border: 2px dashed #f48fb1; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .warning-box {
+            background: #fff3e0; border-left: 6px solid #ff9800; padding: 18px 25px;
+            border-radius: 8px; margin-bottom: 30px; color: #d84315; font-size: 17px; line-height: 1.6;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        h2 { text-align: center; color: var(--primary); margin-top: 0; margin-bottom: 8px; font-weight: 600; font-size: 32px; line-height: 1.3; }
+        .subtitle { text-align: center; font-size: 18px; color: #455a64; margin-bottom: 35px; line-height: 1.5; }
+        
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        .input-group { 
+            display: flex; flex-direction: column; background: rgba(255, 255, 255, 0.5); 
+            padding: 15px 20px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: inset 0 2px 5px rgba(255,255,255,0.3);
+        }
+        label { font-size: 16px; font-weight: 600; margin-bottom: 8px; color: #0277bd; }
+        input { padding: 12px 15px; border: 1px solid #81d4fa; border-radius: 8px; font-size: 18px; outline: none; transition: all 0.3s; background: rgba(255,255,255,0.9); }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(2, 119, 189, 0.25); }
+        
+        button {
+            grid-column: span 2; background: linear-gradient(135deg, #0288d1, #26c6da);
+            color: white; border: none; padding: 20px; border-radius: 12px; font-size: 22px;
+            font-weight: 600; cursor: pointer; transition: transform 0.2s; margin-top: 20px;
+            box-shadow: 0 8px 20px rgba(0, 188, 212, 0.4);
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0, 188, 212, 0.6); }
+        
+        .result-box {
+            grid-column: span 2; margin-top: 30px; background: linear-gradient(135deg, #f1f8e9 0%, #e8f5e9 100%);
+            padding: 30px; border-radius: 16px; border: 2px solid #81c784; display: none;
+            animation: slideDown 0.5s ease-out;
+        }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .section-title { width: 100%; color: #1b5e20; font-size: 22px; font-weight: 600; border-bottom: 2px dashed #a5d6a7; padding-bottom: 8px; margin-top: 25px; margin-bottom: 20px; }
+        
+        .res-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        @media (min-width: 950px) { .res-grid { grid-template-columns: repeat(3, 1fr); } }
+        
+        .res-item { background: rgba(255,255,255,0.9); padding: 25px 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; border-bottom: 5px solid #4caf50; }
+        .res-item.highlight { border-bottom-color: #0288d1; }
+        .res-item.accent { border-bottom-color: #d81b60; }
+        .res-item.fcr { border-bottom-color: #ff9800; }
+        .res-item.past { border-bottom-color: #795548; padding: 20px; }
+        .res-item.future { border-bottom-color: #673ab7; padding: 20px; }
+        
+        .res-item span { display: block; font-size: 16px; color: #546e7a; margin-bottom: 12px; font-weight: 600; }
+        .res-item strong { font-size: 30px; color: #1a237e; line-height: 1.2; display: block; word-break: break-word; }
+        .res-item .sub-label { font-size: 14px; color: #78909c; margin-top: 5px; display: block; }
+        
+        .data-list { list-style: none; padding: 0; margin: 20px 0 0 0; text-align: left; }
+        .data-list li { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px dashed #cfd8dc; padding: 12px 0; font-size: 16px; color: #455a64; flex-wrap: wrap; gap: 5px; }
+        .data-list li:last-child { border-bottom: none; }
+        .data-list li span { font-weight: 500; flex: 1; min-width: 130px; }
+        .data-list li strong { font-size: 18px; color: #1a237e; text-align: right;}
+        
+        .card-header { font-size: 18px; font-weight: 600; color: #fff; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 10px; }
+        .past .card-header { background: linear-gradient(135deg, #8d6e63, #5d4037); }
+        .future .card-header { background: linear-gradient(135deg, #7e57c2, #4527a0); }
+
+        /* การปรับแต่งสำหรับหน้าจอขนาดเล็ก ป้องกันตัวอักษรตกขอบ */
+        @media (max-width: 768px) { 
+            .grid { grid-template-columns: 1fr; } 
+            button, .result-box, .top-credit, .warning-box { grid-column: span 1; } 
+            .res-grid { grid-template-columns: 1fr; }
+            .container { padding: 25px 20px; }
+            h2 { font-size: 26px; }
+            .res-item strong { font-size: 26px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="top-credit">
+        ✨ ออกแบบและสร้างสรรค์โปรแกรมโดย รศ.ดร.เจษฎา อิสเหาะ ✨
+    </div>
+
+    <h2>🐟 โปรแกรมประเมินผลผลิตปลานิลแดง</h2>
+    <div class="subtitle">
+        <strong>ระบบไมโคร-นาโนบับเบิ้ล (99%O2) ร่วมกับแอร์ลิฟท์</strong><br>
+        (บ่อผ้าใบ ทรงกระบอกเส้นผ่านศูนย์กลาง 3 เมตร ระดับความสูง 1 เมตร)
+    </div>
+
+    <div class="warning-box">
+        ⚠️ <strong>ข้อกำหนดในการใช้โปรแกรม:</strong><br>
+        1. จำนวนปลาที่ปล่อยเลี้ยงเริ่มต้น <strong>ต้องไม่เกิน 520 ตัว</strong><br>
+        2. ขนาดน้ำหนักปลาเฉลี่ยที่นำมาคำนวณ ต้องอยู่ในช่วง <strong>10 - 400 กรัม</strong> เท่านั้น
+    </div>
+    
+    <div class="grid">
+        <div class="input-group">
+            <label>1. น้ำหนักปลาเฉลี่ยปัจจุบัน (กรัม/ตัว)</label>
+            <input type="number" id="weight" value="150" step="any">
+        </div>
+        <div class="input-group">
+            <label>2. จำนวนปลาที่ปล่อยเริ่มต้น (ตัว)</label>
+            <input type="number" id="init_fish" value="520" step="any">
+        </div>
+        <div class="input-group" style="grid-column: span 2; border-color: var(--accent); background: rgba(255,255,255,0.7);">
+            <label style="color: var(--accent);">3. ปริมาณอาหารที่ให้วันนี้ (กิโลกรัม/วัน)</label>
+            <input type="number" id="feed_intake" value="1.5" step="any">
+        </div>
+        
+        <div class="input-group" style="grid-column: span 2; background: transparent; border: none; padding: 0; padding-top: 15px; box-shadow: none;">
+            <strong style="color: #0288d1; font-size: 18px;">ดัชนีคุณภาพน้ำ ณ เวลาปัจจุบัน:</strong>
+        </div>
+        <div class="input-group"><label>1) อุณหภูมิน้ำ (°C)</label><input type="number" id="temp" value="30" step="any"></div>
+        <div class="input-group"><label>2) ค่า DO (mg/L)</label><input type="number" id="do_val" value="7.5" step="any"></div>
+        <div class="input-group"><label>3) ค่า pH</label><input type="number" id="ph" value="7.4" step="any"></div>
+        <div class="input-group"><label>4) ค่า TAN (mg/L)</label><input type="number" id="tan" value="0.5" step="any"></div>
+        <div class="input-group"><label>5) ค่า Nitrite (mg/L)</label><input type="number" id="nitrite" value="0.1" step="any"></div>
+
+        <button onclick="calculateResults()">✨ ประเมินผลลัพธ์การเลี้ยง</button>
+
+        <div class="result-box" id="resultBox">
+            <h3 style="text-align: center; margin-top: 0; margin-bottom: 10px; color: #1b5e20; font-size: 28px;">📊 สรุปผลการประเมิน</h3>
+            
+            <div class="section-title">📌 สถานะปัจจุบัน (วันนี้)</div>
+            <div class="res-grid">
+                <div class="res-item highlight">
+                    <span>🐟 จำนวนปลาที่รอด</span>
+                    <strong id="out_remain">0</strong>
+                    <span class="sub-label">ตัว</span>
+                </div>
+                <div class="res-item highlight">
+                    <span>📈 อัตราการรอดตาย</span>
+                    <strong id="out_survival">0.00</strong>
+                    <span class="sub-label">% (เปอร์เซ็นต์)</span>
+                </div>
+                <div class="res-item highlight">
+                    <span>📦 ผลผลิตปลารวม</span>
+                    <strong id="out_yield">0.00</strong>
+                    <span class="sub-label">กิโลกรัม</span>
+                </div>
+                <div class="res-item fcr">
+                    <span>📊 Period FCR</span>
+                    <strong id="out_period_fcr" style="color: #e65100;">0.00</strong>
+                    <span class="sub-label">อัตราแลกเนื้อช่วงวัน</span>
+                </div>
+                <div class="res-item fcr">
+                    <span>📊 FCR สะสมเฉลี่ย</span>
+                    <strong id="out_cum_fcr" style="color: #e65100;">0.00</strong>
+                    <span class="sub-label">ตลอดระยะเวลา</span>
+                </div>
+                <div class="res-item accent">
+                    <span>🛍️ อาหารรวมสะสม</span>
+                    <strong id="out_cum_fi" style="color: #d81b60;">0.00</strong>
+                    <span class="sub-label">กิโลกรัม (สะสม)</span>
+                </div>
+            </div>
+
+            <div class="section-title" style="color: #4e342e; border-color: #8d6e63; margin-top: 40px;">⏳ ข้อมูลการเลี้ยงย้อนหลัง และ ล่วงหน้า</div>
+            <div class="res-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+                
+                <div class="res-item past">
+                    <div class="card-header">⏪ 7 วันก่อนหน้านี้</div>
+                    <ul class="data-list">
+                        <li><span>น้ำหนักปลาเฉลี่ย:</span> <strong id="w_m7">0.00 กรัม</strong></li>
+                        <li><span>แนะนำอาหารให้/วัน:</span> <strong id="fi_m7">0.00 กก.</strong></li>
+                        <li><span>Period FCR:</span> <strong id="pfcr_m7">0.00</strong></li>
+                        <li><span>FCR สะสมเฉลี่ย:</span> <strong id="cfcr_m7">0.00</strong></li>
+                        <li><span>อาหารรวมสะสม:</span> <strong id="cfi_m7">0.00 กก.</strong></li>
+                    </ul>
+                </div>
+                
+                <div class="res-item past">
+                    <div class="card-header">⏪ 1 วันก่อนหน้านี้</div>
+                    <ul class="data-list">
+                        <li><span>น้ำหนักปลาเฉลี่ย:</span> <strong id="w_m1">0.00 กรัม</strong></li>
+                        <li><span>แนะนำอาหารให้/วัน:</span> <strong id="fi_m1">0.00 กก.</strong></li>
+                        <li><span>Period FCR:</span> <strong id="pfcr_m1">0.00</strong></li>
+                        <li><span>FCR สะสมเฉลี่ย:</span> <strong id="cfcr_m1">0.00</strong></li>
+                        <li><span>อาหารรวมสะสม:</span> <strong id="cfi_m1">0.00 กก.</strong></li>
+                    </ul>
+                </div>
+
+                <div class="res-item future">
+                    <div class="card-header">⏩ อีก 30 วันข้างหน้า</div>
+                    <ul class="data-list">
+                        <li><span>น้ำหนักปลาเฉลี่ย:</span> <strong id="w_p30">0.00 กรัม</strong></li>
+                        <li><span>ต้องให้อาหาร/วัน:</span> <strong id="fi_p30">0.00 กก.</strong></li>
+                        <li><span>Period FCR:</span> <strong id="pfcr_p30">0.00</strong></li>
+                        <li><span>FCR สะสมเฉลี่ย:</span> <strong id="cfcr_p30">0.00</strong></li>
+                        <li><span>อาหารรวมสะสม:</span> <strong id="cfi_p30">0.00 กก.</strong></li>
+                    </ul>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    function calculateResults() {
+        let w = parseFloat(document.getElementById('weight').value) || 0;
+        let init_fish = parseFloat(document.getElementById('init_fish').value) || 0;
+        let feed_intake = parseFloat(document.getElementById('feed_intake').value) || 0;
+        let temp = parseFloat(document.getElementById('temp').value) || 0;
+        let do_val = parseFloat(document.getElementById('do_val').value) || 0;
+        let ph = parseFloat(document.getElementById('ph').value) || 0;
+        let tan = parseFloat(document.getElementById('tan').value) || 0;
+        let nitrite = parseFloat(document.getElementById('nitrite').value) || 0;
+
+        function calcFI(target_weight) {
+            let fi = 2.191336635149475 + (target_weight * 0.006247926467329792) + (temp * -0.3404472521559866) + (do_val * -0.7275731520362787) + (ph * 2.0836138273915803) + (tan * -4.721333105213891) + (nitrite * -1.2579183206742555);
+            return Math.max(0, fi);
+        }
+
+        function calcPeriodFCR(target_w, target_fi) {
+            let val = -5.629055477401857 + (target_w * -0.0005626912768011847) + (temp * -0.07948570961768357) + (do_val * 0.018043281281287044) + (ph * 1.1180071822570519) + (tan * -0.20241122625302657) + (nitrite * 0.23959716776254536) + (target_fi * 0.22014401288400648);
+            return Math.max(0, val);
+        }
+
+        function calcCumFCR(target_w, target_fi) {
+            let val = -4.425462390319515 + (target_w * -0.001973821147190042) + (temp * 0.10429671728283618) + (do_val * -0.012735838140230271) + (ph * 0.2648751161363837) + (tan * 1.826946790030227) + (nitrite * -0.41878787802623524) + (target_fi * 0.05180024599921937);
+            return Math.max(0, val);
+        }
+
+        function calcCumFI(target_w, target_fi) {
+            let val = -543.8865645887837 + (target_w * 0.5538186939649035) + (temp * -15.245346196634646) + (do_val * 9.227177277940138) + (ph * 120.33144632306261) + (tan * 369.4750288981548) + (nitrite * -84.7264302467924) + (target_fi * -1.026525190989851);
+            return Math.max(0, val);
+        }
+
+        // โมเดลประเมินปลาที่รอด
+        let pred_fish = 910.3424289577599 + (w * -0.02746870891986731) + (temp * -4.263827476009163) + (do_val * 1.8003770621462305) + (ph * -37.323309559744864) + (tan * -18.223126798788478) + (nitrite * -10.844184763492263) + (feed_intake * 0.8356209406525963);
+        if (pred_fish > init_fish) pred_fish = init_fish;
+        if (pred_fish < 0) pred_fish = 0;
+
+        // โมเดลประเมิน ADG
+        let pred_adg = 20.16245851745699 + (w * 0.005728570593944341) + (temp * 0.590547521548639) + (do_val * -1.142179750291747) + (ph * -3.4307449360516995) + (tan * -1.5054790064764292) + (nitrite * -1.9800413183156602);
+                       
+        // ปัจจุบัน
+        let remaining_fish = Math.round(pred_fish);
+        let survival_rate = init_fish > 0 ? (remaining_fish / init_fish) * 100 : 0;
+        if (survival_rate > 100) survival_rate = 100;
+        let yield_kg = (remaining_fish * w) / 1000;
+        
+        let curr_period_fcr = calcPeriodFCR(w, feed_intake);
+        let curr_cum_fcr = calcCumFCR(w, feed_intake);
+        let curr_cum_fi = calcCumFI(w, feed_intake);
+
+        // ย้อนหลัง 1 วัน
+        let w_m1 = Math.max(0, Math.min(w, w - pred_adg)); 
+        let fi_m1 = calcFI(w_m1);
+        let period_fcr_m1 = calcPeriodFCR(w_m1, fi_m1);
+        let cum_fcr_m1 = calcCumFCR(w_m1, fi_m1);
+        let cum_fi_m1 = Math.max(0, Math.min(curr_cum_fi, calcCumFI(w_m1, fi_m1)));
+
+        // ย้อนหลัง 7 วัน
+        let w_m7 = Math.max(0, Math.min(w_m1, w - (pred_adg * 7)));
+        let fi_m7 = calcFI(w_m7);
+        let period_fcr_m7 = calcPeriodFCR(w_m7, fi_m7);
+        let cum_fcr_m7 = calcCumFCR(w_m7, fi_m7);
+        let cum_fi_m7 = Math.max(0, Math.min(cum_fi_m1, calcCumFI(w_m7, fi_m7)));
+
+        // ล่วงหน้า 30 วัน
+        let w_p30 = Math.max(w, w + (pred_adg * 30));
+        let fi_p30 = calcFI(w_p30);
+        let period_fcr_p30 = calcPeriodFCR(w_p30, fi_p30);
+        let cum_fcr_p30 = calcCumFCR(w_p30, fi_p30);
+        let cum_fi_p30 = Math.max(curr_cum_fi, calcCumFI(w_p30, fi_p30));
+
+        // แสดงผล
+        document.getElementById('out_remain').innerHTML = remaining_fish.toLocaleString();
+        document.getElementById('out_survival').innerHTML = survival_rate.toFixed(2);
+        document.getElementById('out_yield').innerHTML = yield_kg.toFixed(2);
+        document.getElementById('out_period_fcr').innerHTML = curr_period_fcr.toFixed(2);
+        document.getElementById('out_cum_fcr').innerHTML = curr_cum_fcr.toFixed(2);
+        document.getElementById('out_cum_fi').innerHTML = curr_cum_fi.toFixed(2);
+        
+        document.getElementById('w_m1').innerHTML = w_m1.toFixed(2) + ' กรัม';
+        document.getElementById('fi_m1').innerHTML = fi_m1.toFixed(2) + ' กก.';
+        document.getElementById('pfcr_m1').innerHTML = period_fcr_m1.toFixed(2);
+        document.getElementById('cfcr_m1').innerHTML = cum_fcr_m1.toFixed(2);
+        document.getElementById('cfi_m1').innerHTML = cum_fi_m1.toFixed(2) + ' กก.';
+
+        document.getElementById('w_m7').innerHTML = w_m7.toFixed(2) + ' กรัม';
+        document.getElementById('fi_m7').innerHTML = fi_m7.toFixed(2) + ' กก.';
+        document.getElementById('pfcr_m7').innerHTML = period_fcr_m7.toFixed(2);
+        document.getElementById('cfcr_m7').innerHTML = cum_fcr_m7.toFixed(2);
+        document.getElementById('cfi_m7').innerHTML = cum_fi_m7.toFixed(2) + ' กก.';
+
+        document.getElementById('w_p30').innerHTML = w_p30.toFixed(2) + ' กรัม';
+        document.getElementById('fi_p30').innerHTML = fi_p30.toFixed(2) + ' กก.';
+        document.getElementById('pfcr_p30').innerHTML = period_fcr_p30.toFixed(2);
+        document.getElementById('cfcr_p30').innerHTML = cum_fcr_p30.toFixed(2);
+        document.getElementById('cfi_p30').innerHTML = cum_fi_p30.toFixed(2) + ' กก.';
+        
+        document.getElementById('resultBox').style.display = 'block';
+    }
+</script>
+</body>
+</html>
